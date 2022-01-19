@@ -41,26 +41,20 @@ func (s *StandAloneStorage) Write(ctx *kvrpcpb.Context, batch []storage.Modify) 
 	// Try to check the definition of `storage.Modify` and txn interface of `badger`.
 	// As the column family is not supported by `badger`, a wrapper is used to simulate it.
 	for _, m := range batch {
-		switch data := m.Data.(type) {
-		case Put:
-			item := memItem{data.Key, data.Value, false}
-			switch data.Cf {
-			case engine_util.CfDefault:
-				s.CfDefault.ReplaceOrInsert(item)
-			case engine_util.CfLock:
-				s.CfLock.ReplaceOrInsert(item)
-			case engine_util.CfWrite:
-				s.CfWrite.ReplaceOrInsert(item)
+		switch m.Data.(type) {
+		case storage.Put:
+			data := m.Data.(storage.Put)
+			cf, key, value := data.Cf, data.Key, data.Value
+			err := engine_util.PutCF(s.db, cf, key, value)
+			if err != nil {
+				return err
 			}
-		case Delete:
-			item := memItem{key: data.Key}
-			switch data.Cf {
-			case engine_util.CfDefault:
-				s.CfDefault.Delete(item)
-			case engine_util.CfLock:
-				s.CfLock.Delete(item)
-			case engine_util.CfWrite:
-				s.CfWrite.Delete(item)
+		case storage.Delete:
+			data := m.Data.(storage.Delete)
+			cf, key := data.Cf, data.Key
+			err := engine_util.DeleteCF(s.db, cf, key)
+			if err != nil {
+				return err
 			}
 		}
 	}
