@@ -31,7 +31,7 @@ func (c *CheckTxnStatus) PrepareWrites(txn *mvcc.MvccTxn) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	panic("CheckTxnStatus is not implemented yet")
+
 	if lock != nil && lock.Ts == txn.StartTS {
 		if physical(lock.Ts)+lock.Ttl < physical(c.request.CurrentTs) {
 			// YOUR CODE HERE (lab2).
@@ -43,6 +43,10 @@ func (c *CheckTxnStatus) PrepareWrites(txn *mvcc.MvccTxn) (interface{}, error) {
 				zap.Uint64("txn.StartTS", txn.StartTS),
 				zap.Uint64("currentTS", c.request.CurrentTs),
 				zap.Uint64("physical(currentTS)", physical(c.request.CurrentTs)))
+			response.Action = kvrpcpb.Action_TTLExpireRollback
+			write := mvcc.Write{StartTS: txn.StartTS, Kind: mvcc.WriteKindRollback}
+			txn.PutWrite(key, c.request.CurrentTs, &write)
+			txn.DeleteLock(key)
 		} else {
 			// Lock has not expired, leave it alone.
 			response.Action = kvrpcpb.Action_NoAction

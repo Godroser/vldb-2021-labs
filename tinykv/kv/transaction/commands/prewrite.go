@@ -62,6 +62,7 @@ func (p *Prewrite) PrepareWrites(txn *mvcc.MvccTxn) (interface{}, error) {
 // prewriteMutation prewrites mut to txn. It returns (nil, nil) on success, (err, nil) if the key in mut is already
 // locked or there is any other key error, and (nil, err) if an internal error occurs.
 func (p *Prewrite) prewriteMutation(txn *mvcc.MvccTxn, mut *kvrpcpb.Mutation) (*kvrpcpb.KeyError, error) {
+	// fmt.Println(" prewrite.go 66: mut =", mut)
 	key := mut.Key
 	log.Debug("prewrite key", zap.Uint64("start_ts", txn.StartTS),
 		zap.String("key", hex.EncodeToString(key)))
@@ -70,17 +71,31 @@ func (p *Prewrite) prewriteMutation(txn *mvcc.MvccTxn, mut *kvrpcpb.Mutation) (*
 	// Hint: Check the interafaces provided by `mvcc.MvccTxn`. The error type `kvrpcpb.WriteConflict` is used
 	//		 denote to write conflict error, try to set error information properly in the `kvrpcpb.KeyError`
 	//		 response.
-	panic("prewriteMutation is not implemented yet")
+
+	// panic("prewriteMutation is not implemented yet")
 
 	// YOUR CODE HERE (lab2).
 	// Check if key is locked. Report key is locked error if lock does exist, note the key could be locked
 	// by this transaction already and the current prewrite request is stale.
-	panic("check lock in prewrite is not implemented yet")
+	// panic("check lock in prewrite is not implemented yet")
+	lock, err := txn.GetLock(key)
+	if err != nil {
+		return nil, err
+	} else if lock != nil {
+		keyError := &kvrpcpb.KeyError{Locked: lock.Info(key)}
+		return keyError, nil
+	}
 
 	// YOUR CODE HERE (lab2).
 	// Write a lock and value.
 	// Hint: Check the interfaces provided by `mvccTxn.Txn`.
-	panic("lock record generation is not implemented yet")
+
+	req := p.request
+	lock = &mvcc.Lock{Primary: req.PrimaryLock, Ts: req.StartVersion, Ttl: req.LockTtl, Kind: 1}
+	txn.PutLock(key, lock)
+	value := mut.Value
+	txn.PutValue(key, value)
+	// panic("lock record generation is not implemented yet")
 
 	return nil, nil
 }
